@@ -627,12 +627,13 @@ body::before{{content:'';position:fixed;inset:0;background-image:linear-gradient
 # 飞书推送
 # ─────────────────────────────────────────────
 
-def push_feishu(results: list):
+def push_feishu(results: list, positions: list, closed: list, closed_trades: list):
     if not FEISHU_WEBHOOK:
         return
 
     triggered = [r for r in results if r.get("sig") and r["sig"]["signal"]]
     soon      = [r for r in results if r.get("sig") and r["sig"]["window"] == "soon" and not r["sig"]["signal"]]
+    open_pos  = [p for p in positions if p["status"] == "open"]
 
     lines = []
 
@@ -640,19 +641,46 @@ def push_feishu(results: list):
     if triggered:
         lines.append(f"🔔 期货信号日报  {TODAY_STR}  【{len(triggered)}个信号触发】")
     else:
-        lines.append(f"📊 期货信号日报  {TODAY_STR}  今日无触发信号")
+        lines.append(f"📊 期货信号日报  {TODAY_STR}")
     lines.append("─" * 36)
 
-    # ── 触发信号 ──
+    # ── 今日平仓 ──
+    if closed:
+        lines.append("【今日平仓】")
+        for p in closed:
+            icon = "✅" if p["pnl_pct"] > 0 else "❌"
+            lines.append(
+                f"  {icon} {p['name']}  "
+                f"入:{p['entry_price']} → 出:{p['exit_price']}  "
+                f"盈亏:{p['pnl_pct']:+.2f}%  持仓{p['hold_days']}天"
+            )
+        lines.append("─" * 36)
+
+    # ── 触发新信号 ──
     if triggered:
-        lines.append("【触发信号】")
+        lines.append("【新信号触发 → 模拟开仓】")
         for r in triggered:
             s, ind, mkt = r["strat"], r["ind"], r["market"]
             d = "做多↑" if s["direction"] == "long" else "做空↓"
-            lines.append(f"  🟢 {s['name']} {d}  胜率{s['stated_winrate']}%")
-            lines.append(f"     价格:{ind['price']}  ADX:{ind['adx']}  RSI:{ind['rsi']}")
-            lines.append(f"     状态:STATE{mkt['state']} {mkt['name']}  仓位:{mkt['position']}")
-            lines.append(f"     窗口:{s['entry_desc']} → {s['exit_desc']}")
+            lines.append(f"  🟢 {s['name']} {d}  入场价:{ind['price']}  胜率:{s['stated_winrate']}%")
+            lines.append(f"     STATE{mkt['state']} {mkt['name']}  目标平仓:{s['exit_desc']}")
+        lines.append("─" * 36)
+
+    # ── 当前模拟持仓 ──
+    if open_pos:
+        lines.append(f"【模拟持仓 ({len(open_pos)}个)】")
+        for p in open_pos:
+            pnl = p.get("pnl_pct", 0)
+            icon = "📈" if pnl > 0 else ("📉" if pnl < 0 else "➡️")
+            d = "多" if p["direction"] == "long" else "空"
+            lines.append(
+                f"  {icon} {p['name']}({d})  "
+                f"入:{p['entry_price']} 现:{p.get('current_price','—')}  "
+                f"浮盈:{pnl:+.2f}%  {p['hold_days']}天"
+            )
+        lines.append("─" * 36)
+    else:
+        lines.append("【模拟持仓】暂无持仓")
         lines.append("─" * 36)
 
     # ── 即将开启 ──
@@ -661,15 +689,12 @@ def push_feishu(results: list):
         for r in soon:
             s, ind = r["strat"], r["ind"]
             d = "做多↑" if s["direction"] == "long" else "做空↓"
-            if ind:
-                lines.append(f"  ⏳ {s['name']} {d}  建仓:{s['entry_desc']}")
-                lines.append(f"     价格:{ind['price']}  ADX:{ind['adx']}  RSI:{ind['rsi']}")
-            else:
-                lines.append(f"  ⏳ {s['name']} {d}  建仓:{s['entry_desc']}")
+            price_str = f"  现价:{ind['price']}" if ind else ""
+            lines.append(f"  ⏳ {s['name']} {d}  建仓:{s['entry_desc']}{price_str}")
         lines.append("─" * 36)
 
     # ── 全品种数据快照 ──
-    lines.append("【全品种数据快照】")
+    lines.append("【全品种指标快照】")
     for r in results:
         s   = r["strat"]
         ind = r.get("ind")
@@ -681,15 +706,26 @@ def push_feishu(results: list):
             lines.append(f"  ❌ {s['name']}({d})  数据获取失败")
             continue
 
-        ws = sig["window"] if sig else "—"
-        ws_icon = "🟢" if ws == "active" else ("🟡" if ws == "soon" else "⚪")
-        state_num = mkt["state"] if mkt else "—"
-        ema = "金叉" if ind["ema_cross"] == "golden" else "死叉"
-
+        ws       = sig["window"] if sig else "—"
+        ws_icon  = "🟢" if ws == "active" else ("🟡" if ws == "soon" else "⚪")
+        state_n  = mkt["state"] if mkt else "—"
+        ema      = "金叉" if ind["ema_cross"] == "golden" else "死叉"
         lines.append(
             f"  {ws_icon} {s['name']}({d})  "
             f"价:{ind['price']}  ADX:{ind['adx']}  RSI:{ind['rsi']}  "
-            f"EMA:{ema}  BIAS:{ind['bias']:+.1f}%  S{state_num}"
+            f"EMA:{ema}  BIAS:{ind['bias']:+.1f}%  S{state_n}"
+        )
+
+    # ── 历史战绩 ──
+    if closed_trades:
+        wins  = sum(1 for t in closed_trades if t.get("pnl_pct", 0) > 0)
+        total = len(closed_trades)
+        avg   = sum(t.get("pnl_pct", 0) for t in closed_trades) / total
+        lines.append("─" * 36)
+        lines.append(
+            f"【观察期战绩】共{total}笔  "
+            f"胜率:{wins/total*100:.0f}%  "
+            f"平均盈亏:{avg:+.2f}%"
         )
 
     # ── 页脚 ──
@@ -705,6 +741,136 @@ def push_feishu(results: list):
         )
     except Exception:
         pass
+
+
+# ─────────────────────────────────────────────
+# 持仓追踪模块
+# ─────────────────────────────────────────────
+
+POSITIONS_FILE = os.path.join(os.path.dirname(__file__), "..", "positions.json")
+
+
+def load_positions() -> list:
+    """读取当前模拟持仓"""
+    if not os.path.exists(POSITIONS_FILE):
+        return []
+    with open(POSITIONS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_positions(positions: list):
+    with open(POSITIONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(positions, f, ensure_ascii=False, indent=2)
+
+
+def update_positions(results: list) -> tuple[list, list]:
+    """
+    1. 检查现有持仓是否到达平仓窗口 → 自动平仓，记录结果
+    2. 检查今日信号触发 → 自动开仓
+    返回 (当前持仓列表, 今日平仓记录列表)
+    """
+    positions  = load_positions()
+    closed     = []   # 今日平仓记录
+    new_positions = []
+
+    # ── Step1: 检查现有持仓是否应该平仓 ──
+    for pos in positions:
+        strat = next((s for s in STRATEGIES if s["id"] == pos["strategy_id"]), None)
+        if strat is None:
+            new_positions.append(pos)
+            continue
+
+        # 找对应品种当前价格
+        cur_price = None
+        for r in results:
+            if r["strat"]["id"] == pos["strategy_id"] and r.get("ind"):
+                cur_price = r["ind"]["price"]
+                break
+
+        if cur_price:
+            pos["current_price"] = cur_price
+            # 计算当前浮动盈亏
+            if pos["direction"] == "long":
+                pos["pnl_pct"] = round((cur_price - pos["entry_price"]) / pos["entry_price"] * 100, 2)
+            else:
+                pos["pnl_pct"] = round((pos["entry_price"] - cur_price) / pos["entry_price"] * 100, 2)
+            pos["hold_days"] = (TODAY - datetime.fromisoformat(pos["entry_date"]).replace(tzinfo=CST)).days
+
+        # 判断是否到平仓窗口
+        exit_year  = TODAY.year
+        exit_month = strat["exit_month"]
+        in_exit_window = (
+            TODAY_MONTH == exit_month and
+            strat["exit_day_start"] <= TODAY_DAY <= strat["exit_day_end"]
+        )
+        # 跨年品种特殊处理
+        if strat.get("cross_year") and TODAY_MONTH == exit_month:
+            in_exit_window = True
+
+        if in_exit_window and cur_price:
+            # 平仓
+            pos["exit_date"]  = TODAY_STR
+            pos["exit_price"] = cur_price
+            pos["status"]     = "closed"
+            closed.append(pos)
+            print(f"  📤 平仓: {pos['name']}  盈亏:{pos['pnl_pct']:+.2f}%  持仓{pos['hold_days']}天")
+        else:
+            pos["status"] = "open"
+            new_positions.append(pos)
+
+    # ── Step2: 检查今日新信号，开仓 ──
+    existing_ids = {p["strategy_id"] for p in new_positions}
+    for r in results:
+        sig  = r.get("sig")
+        ind  = r.get("ind")
+        strat = r["strat"]
+
+        if not sig or not sig["signal"] or ind is None:
+            continue
+        if strat["id"] in existing_ids:
+            # 已有持仓，不重复开
+            continue
+
+        new_pos = {
+            "strategy_id":  strat["id"],
+            "name":         strat["name"],
+            "direction":    strat["direction"],
+            "entry_date":   TODAY_STR,
+            "entry_price":  ind["price"],
+            "current_price": ind["price"],
+            "exit_target":  f"{strat['exit_month']}月{strat['exit_day_start']}-{strat['exit_day_end']}日",
+            "contract":     strat["contract"],
+            "stated_winrate": strat["stated_winrate"],
+            "pnl_pct":      0.0,
+            "hold_days":    0,
+            "status":       "open",
+        }
+        new_positions.append(new_pos)
+        existing_ids.add(strat["id"])
+        print(f"  📥 开仓: {strat['name']}  入场价:{ind['price']}")
+
+    save_positions(new_positions)
+
+    # ── Step3: 保存平仓记录 ──
+    if closed:
+        closed_file = os.path.join(os.path.dirname(__file__), "..", "closed_trades.json")
+        existing_closed = []
+        if os.path.exists(closed_file):
+            with open(closed_file, "r", encoding="utf-8") as f:
+                existing_closed = json.load(f)
+        existing_closed.extend(closed)
+        with open(closed_file, "w", encoding="utf-8") as f:
+            json.dump(existing_closed, f, ensure_ascii=False, indent=2)
+
+    return new_positions, closed
+
+
+def load_closed_trades() -> list:
+    closed_file = os.path.join(os.path.dirname(__file__), "..", "closed_trades.json")
+    if not os.path.exists(closed_file):
+        return []
+    with open(closed_file, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 # ─────────────────────────────────────────────
@@ -771,8 +937,13 @@ def main():
         json.dump(history_data, f, ensure_ascii=False, indent=2)
     print(f"✓ history/{TODAY_STR}.json 已保存")
 
+    # 持仓追踪
+    print("\n[持仓追踪]")
+    positions, closed = update_positions(results)
+    closed_trades = load_closed_trades()
+
     # 飞书推送
-    push_feishu(results)
+    push_feishu(results, positions, closed, closed_trades)
     print("✓ 完成")
 
 
