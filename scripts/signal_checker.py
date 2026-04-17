@@ -630,18 +630,79 @@ body::before{{content:'';position:fixed;inset:0;background-image:linear-gradient
 def push_feishu(results: list):
     if not FEISHU_WEBHOOK:
         return
+
     triggered = [r for r in results if r.get("sig") and r["sig"]["signal"]]
-    if not triggered:
-        text = f"📊 {TODAY_STR} 期货信号：今日无触发信号"
+    soon      = [r for r in results if r.get("sig") and r["sig"]["window"] == "soon" and not r["sig"]["signal"]]
+
+    lines = []
+
+    # ── 标题 ──
+    if triggered:
+        lines.append(f"🔔 期货信号日报  {TODAY_STR}  【{len(triggered)}个信号触发】")
     else:
-        lines = [f"🔔 {TODAY_STR} 期货信号触发 {len(triggered)} 个\n"]
+        lines.append(f"📊 期货信号日报  {TODAY_STR}  今日无触发信号")
+    lines.append("─" * 36)
+
+    # ── 触发信号 ──
+    if triggered:
+        lines.append("【触发信号】")
         for r in triggered:
-            s = r["strat"]
+            s, ind, mkt = r["strat"], r["ind"], r["market"]
             d = "做多↑" if s["direction"] == "long" else "做空↓"
-            lines.append(f"• {s['name']} {d}  胜率{s['stated_winrate']}%  {s['entry_desc']}→{s['exit_desc']}")
-        text = "\n".join(lines)
+            lines.append(f"  🟢 {s['name']} {d}  胜率{s['stated_winrate']}%")
+            lines.append(f"     价格:{ind['price']}  ADX:{ind['adx']}  RSI:{ind['rsi']}")
+            lines.append(f"     状态:STATE{mkt['state']} {mkt['name']}  仓位:{mkt['position']}")
+            lines.append(f"     窗口:{s['entry_desc']} → {s['exit_desc']}")
+        lines.append("─" * 36)
+
+    # ── 即将开启 ──
+    if soon:
+        lines.append("【即将开启（2周内）】")
+        for r in soon:
+            s, ind = r["strat"], r["ind"]
+            d = "做多↑" if s["direction"] == "long" else "做空↓"
+            if ind:
+                lines.append(f"  ⏳ {s['name']} {d}  建仓:{s['entry_desc']}")
+                lines.append(f"     价格:{ind['price']}  ADX:{ind['adx']}  RSI:{ind['rsi']}")
+            else:
+                lines.append(f"  ⏳ {s['name']} {d}  建仓:{s['entry_desc']}")
+        lines.append("─" * 36)
+
+    # ── 全品种数据快照 ──
+    lines.append("【全品种数据快照】")
+    for r in results:
+        s   = r["strat"]
+        ind = r.get("ind")
+        mkt = r.get("market")
+        sig = r.get("sig")
+        d   = "多" if s["direction"] == "long" else "空"
+
+        if ind is None:
+            lines.append(f"  ❌ {s['name']}({d})  数据获取失败")
+            continue
+
+        ws = sig["window"] if sig else "—"
+        ws_icon = "🟢" if ws == "active" else ("🟡" if ws == "soon" else "⚪")
+        state_num = mkt["state"] if mkt else "—"
+        ema = "金叉" if ind["ema_cross"] == "golden" else "死叉"
+
+        lines.append(
+            f"  {ws_icon} {s['name']}({d})  "
+            f"价:{ind['price']}  ADX:{ind['adx']}  RSI:{ind['rsi']}  "
+            f"EMA:{ema}  BIAS:{ind['bias']:+.1f}%  S{state_num}"
+        )
+
+    # ── 页脚 ──
+    lines.append("─" * 36)
+    lines.append(f"🔗 https://henghenglin.github.io/futures-signal")
+
+    text = "\n".join(lines)
     try:
-        requests.post(FEISHU_WEBHOOK, json={"msg_type": "text", "content": {"text": text}}, timeout=10)
+        requests.post(
+            FEISHU_WEBHOOK,
+            json={"msg_type": "text", "content": {"text": text}},
+            timeout=10
+        )
     except Exception:
         pass
 
