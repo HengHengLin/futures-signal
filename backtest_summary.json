@@ -1,30 +1,121 @@
 [
   {
     "name": "螺纹钢",
-    "error": "计算失败"
+    "direction": "long",
+    "total": 11,
+    "wins": 5,
+    "winrate": 45.5,
+    "stated_winrate": 80,
+    "diff": -34.5,
+    "avg_pnl": -0.59,
+    "avg_win": 8.58,
+    "avg_loss": -8.24,
+    "risk_reward": 1.04,
+    "max_drawdown": -20.54,
+    "avg_hold": 63,
+    "max_loss_streak": 3,
+    "logic": "春节后复工需求确定性回归"
   },
   {
     "name": "沥青",
-    "error": "计算失败"
+    "direction": "short",
+    "total": 11,
+    "wins": 4,
+    "winrate": 36.4,
+    "stated_winrate": 80,
+    "diff": -43.6,
+    "avg_pnl": -3.52,
+    "avg_win": 11.28,
+    "avg_loss": -11.97,
+    "risk_reward": 0.94,
+    "max_drawdown": -46.28,
+    "avg_hold": 49,
+    "max_loss_streak": 4,
+    "logic": "北方入冬道路停工，需求物理冰封"
   },
   {
     "name": "铁矿石",
-    "error": "计算失败"
+    "direction": "long",
+    "total": 11,
+    "wins": 8,
+    "winrate": 72.7,
+    "stated_winrate": 82,
+    "diff": -9.3,
+    "avg_pnl": 9.21,
+    "avg_win": 14.71,
+    "avg_loss": -5.47,
+    "risk_reward": 2.69,
+    "max_drawdown": -18.51,
+    "avg_hold": 61,
+    "max_loss_streak": 1,
+    "logic": "钢厂冬储补库，澳洲巴西雨季供应收缩"
   },
   {
     "name": "鸡蛋(秋季空)",
-    "error": "计算失败"
+    "direction": "short",
+    "total": 11,
+    "wins": 3,
+    "winrate": 27.3,
+    "stated_winrate": 85,
+    "diff": -57.7,
+    "avg_pnl": -3.15,
+    "avg_win": 4.7,
+    "avg_loss": -6.09,
+    "risk_reward": 0.77,
+    "max_drawdown": -19.22,
+    "avg_hold": 34,
+    "max_loss_streak": 7,
+    "logic": "中秋国庆后需求坍塌，秋季产蛋率全年高位"
   },
   {
     "name": "鸡蛋(夏季多)",
-    "error": "计算失败"
+    "direction": "long",
+    "total": 11,
+    "wins": 4,
+    "winrate": 36.4,
+    "stated_winrate": 80,
+    "diff": -43.6,
+    "avg_pnl": -2.38,
+    "avg_win": 5.59,
+    "avg_loss": -6.93,
+    "risk_reward": 0.81,
+    "max_drawdown": -19.41,
+    "avg_hold": 50,
+    "max_loss_streak": 2,
+    "logic": "高温减产+中秋月饼厂提前采购"
   },
   {
     "name": "鸡蛋(春季空)",
-    "error": "计算失败"
+    "direction": "short",
+    "total": 11,
+    "wins": 3,
+    "winrate": 27.3,
+    "stated_winrate": 79,
+    "diff": -51.7,
+    "avg_pnl": -8.62,
+    "avg_win": 7.5,
+    "avg_loss": -14.67,
+    "risk_reward": 0.51,
+    "max_drawdown": -43.13,
+    "avg_hold": 59,
+    "max_loss_streak": 5,
+    "logic": "春节后淡季，梅雨季贸易商被迫低价去库"
   },
   {
     "name": "豆粕",
-    "error": "计算失败"
+    "direction": "long",
+    "total": 11,
+    "wins": 7,
+    "winrate": 63.6,
+    "stated_winrate": 80,
+    "diff": -16.4,
+    "avg_pnl": 1.07,
+    "avg_win": 5.27,
+    "avg_loss": -6.26,
+    "risk_reward": 0.84,
+    "max_drawdown": -16.45,
+    "avg_hold": 50,
+    "max_loss_streak": 1,
+    "logic": "美豆天气升水炒作+国内饲料旺季"
   }
 ]
