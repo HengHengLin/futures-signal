@@ -232,7 +232,7 @@ def backtest_one(df: pd.DataFrame, strat: dict) -> pd.DataFrame:
         # 出场日必须晚于入场日，且不超过END_DATE
         if exit_row["date"] <= entry_row["date"]:
             continue
-        if exit_row["date"] > pd.Timestamp(END_DATE):
+        if exit_row["date"] > pd.Timestamp(END_DATE.replace(tzinfo=None)):
             continue
 
         entry_price = float(entry_row["close"])
