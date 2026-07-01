@@ -35,20 +35,7 @@
   },
   {
     "name": "铁矿石",
-    "direction": "long",
-    "total": 11,
-    "wins": 8,
-    "winrate": 72.7,
-    "stated_winrate": 82,
-    "diff": -9.3,
-    "avg_pnl": 9.21,
-    "avg_win": 14.71,
-    "avg_loss": -5.47,
-    "risk_reward": 2.69,
-    "max_drawdown": -18.51,
-    "avg_hold": 61,
-    "max_loss_streak": 1,
-    "logic": "钢厂冬储补库，澳洲巴西雨季供应收缩"
+    "error": "无数据"
   },
   {
     "name": "鸡蛋(秋季空)",
