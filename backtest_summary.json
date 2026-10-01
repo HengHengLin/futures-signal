@@ -18,20 +18,7 @@
   },
   {
     "name": "沥青",
-    "direction": "short",
-    "total": 11,
-    "wins": 4,
-    "winrate": 36.4,
-    "stated_winrate": 80,
-    "diff": -43.6,
-    "avg_pnl": -3.52,
-    "avg_win": 11.28,
-    "avg_loss": -11.97,
-    "risk_reward": 0.94,
-    "max_drawdown": -46.28,
-    "avg_hold": 49,
-    "max_loss_streak": 4,
-    "logic": "北方入冬道路停工，需求物理冰封"
+    "error": "无数据"
   },
   {
     "name": "铁矿石",
